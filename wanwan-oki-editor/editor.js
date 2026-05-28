@@ -52,6 +52,7 @@ const els = {
   exportRom: document.getElementById('exportRom'),
   exportProject: document.getElementById('exportProject'),
   importProject: document.getElementById('importProject'),
+  importRom: document.getElementById('importRom'),
   targetRate: document.getElementById('targetRate'),
   defaultPeak: document.getElementById('defaultPeak'),
   defaultMaxMs: document.getElementById('defaultMaxMs'),
@@ -279,6 +280,38 @@ function decodeNibbles(nibbles) {
     out[i] = signal;
   }
   return out;
+}
+
+function unpackPhrase(phrase) {
+  const nibbles = [];
+  let pos = 0;
+  while (pos < phrase.length) {
+    const count = phrase[pos++];
+    if (count === 0) break;
+    if (pos + count > phrase.length) throw new Error('truncated phrase block');
+    for (let i = 0; i < count; i++) {
+      const b = phrase[pos++];
+      nibbles.push((b >> 4) & 15, b & 15);
+    }
+  }
+  return new Uint8Array(nibbles);
+}
+
+function extractPhraseFromRom(rom, start) {
+  if (start <= 0 || start >= rom.length) return null;
+  const bytes = [];
+  let pos = start;
+  let blocks = 0;
+  while (pos < rom.length) {
+    const count = rom[pos++];
+    bytes.push(count);
+    if (count === 0) return new Uint8Array(bytes);
+    if (pos + count > rom.length) throw new Error(`phrase at ${hex(start, 6)} runs past end of ROM`);
+    for (let i = 0; i < count; i++) bytes.push(rom[pos++]);
+    blocks++;
+    if (blocks > 4096) throw new Error(`phrase at ${hex(start, 6)} has no terminator`);
+  }
+  throw new Error(`phrase at ${hex(start, 6)} has no terminator`);
 }
 
 function packPhrase(nibbles) {
@@ -527,6 +560,55 @@ function base64ToI16(s) {
   return new Int16Array(u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength));
 }
 
+
+async function importRomFile(file) {
+  const rom = new Uint8Array(await file.arrayBuffer());
+  if (rom.length < TABLE_COMMANDS * 4) throw new Error('ROM is too small to contain a 128-entry OKI phrase table');
+  const imported = [];
+  const failed = [];
+  const seenStarts = new Map();
+  for (const def of SLOT_DEFS) {
+    const off = def.cmd * 4;
+    const start = (rom[off] << 16) | (rom[off + 1] << 8) | rom[off + 2];
+    const flags = rom[off + 3];
+    const slot = slots.get(def.cmd);
+    if (!slot) continue;
+    if (!start) {
+      clearSlot(def.cmd);
+      continue;
+    }
+    try {
+      const phrase = seenStarts.get(start) || extractPhraseFromRom(rom, start);
+      if (!phrase) {
+        clearSlot(def.cmd);
+        continue;
+      }
+      seenStarts.set(start, phrase);
+      const nibbles = unpackPhrase(phrase);
+      const decoded = decodeNibbles(nibbles);
+      slot.sourceName = `${file.name}: command ${hex(def.cmd)} @ ${hex(start, 6)}`;
+      slot.sourceBuffer = null;
+      slot.processedPcm = [];
+      slot.nibbles = nibbles;
+      slot.phrase = phrase;
+      slot.decodedPcm = decoded;
+      slot.audioInput.value = '';
+      slot.status.textContent = `${slot.sourceName}\nimported phrase ${phrase.length} bytes, flags ${hex(flags)}\ndecoded ${decoded.length} samples\nduration ${(decoded.length / readGlobalOptions().targetRate).toFixed(3)} s`;
+      slot.previewBtn.disabled = !decoded.length;
+      slot.downloadWavBtn.disabled = !decoded.length;
+      slot.clearBtn.disabled = false;
+      revokeUrl(slot.previewUrl); slot.previewUrl = null; slot.previewAudio.removeAttribute('src');
+      imported.push(`${hex(def.cmd)} <- ${hex(start, 6)} (${phrase.length} bytes)`);
+    } catch (err) {
+      failed.push(`${hex(def.cmd)} @ ${hex(start, 6)}: ${err && err.message ? err.message : String(err)}`);
+    }
+  }
+  updateSummary();
+  const message = [`Imported ${imported.length} Wanwan command slots from ${file.name}.`];
+  if (failed.length) message.push('', 'Warnings:', ...failed.slice(0, 12), failed.length > 12 ? `...${failed.length - 12} more` : '');
+  els.batchLog.textContent = message.join('\n');
+}
+
 async function importProjectFile(file) {
   const project = JSON.parse(await file.text());
   if (!project || project.version !== 1 || !Array.isArray(project.phrases)) throw new Error('Unsupported project file');
@@ -591,6 +673,9 @@ els.exportRom.addEventListener('click', exportRom);
 els.exportProject.addEventListener('click', exportProject);
 els.importProject.addEventListener('change', () => {
   if (els.importProject.files && els.importProject.files[0]) importProjectFile(els.importProject.files[0]).catch(err => alert(err.message || String(err)));
+});
+els.importRom.addEventListener('change', () => {
+  if (els.importRom.files && els.importRom.files[0]) importRomFile(els.importRom.files[0]).catch(err => alert(err.message || String(err)));
 });
 els.batchFiles.addEventListener('change', () => { if (els.batchFiles.files) handleBatchFiles([...els.batchFiles.files]); });
 for (const eventName of ['dragenter', 'dragover']) {

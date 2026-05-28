@@ -11,12 +11,13 @@
     <div>
       <p class="eyebrow">Casio Loopy / Wanwan Aijou Monogatari</p>
       <h1>OKI MSM6653A-457 ADPCM ROM editor</h1>
-      <p class="lede">Browser-only editor for building a replacement Wanwan cartridge ADPCM sample binary. Upload WAV, MP3, OGG, FLAC, or any format your browser can decode; the tool resamples to the OKI rate, encodes to 4-bit ADPCM, packs phrases into the Wanwan-compatible table ROM, and lets you preview the decoded result.</p>
+      <p class="lede">Browser-only editor for building a replacement Wanwan cartridge ADPCM sample binary. Upload WAV, MP3, OGG, FLAC, or any format your browser can decode; the tool resamples to the OKI rate, encodes to 4-bit ADPCM, packs phrases into the Wanwan-compatible table ROM, and lets you preview the decoded result. Existing OKI binary ROMs can also be imported, decoded into slots, played, edited, and exported again.</p>
     </div>
     <div class="actions">
       <button id="exportRom" class="primary">Export ROM .bin</button>
       <button id="exportProject">Export project</button>
       <label class="file-button">Import project<input id="importProject" type="file" accept="application/json,.json"></label>
+      <label class="file-button">Import ROM .bin<input id="importRom" type="file" accept="application/octet-stream,.bin"></label>
     </div>
   </header>
 
