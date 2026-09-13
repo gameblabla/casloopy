@@ -11,7 +11,7 @@ const BUTTONS = [
   ['L1', 0x0004], ['R1', 0x0008], ['Up', 0x0100], ['Down', 0x0200], ['Left', 0x0400], ['Right', 0x0800]
 ];
 const DEFAULT_KEYS = { Start:'Enter', A:'KeyZ', B:'KeyX', C:'KeyC', D:'KeyV', L1:'KeyA', R1:'KeyS', Up:'ArrowUp', Down:'ArrowDown', Left:'ArrowLeft', Right:'ArrowRight' };
-const DEFAULT_CONFIG = { keys:{...DEFAULT_KEYS}, video:{ aspect:'native', smoothUpscale:false, scanlines:false, showFps:true }, touchGamepad:{ opacity:0.72 }, wanwanReplacementPcm:true, stateSlot:0, portDevice:'gamepad' };
+const DEFAULT_CONFIG = { keys:{...DEFAULT_KEYS}, video:{ aspect:'keep', smoothUpscale:false, scanlines:false, showFps:true }, touchGamepad:{ opacity:0.72 }, wanwanReplacementPcm:true, stateSlot:0, portDevice:'gamepad' };
 const els = {
   canvas: document.getElementById('video'), screenFrame: document.getElementById('screenFrame'), fpsCounter: document.getElementById('fpsCounter'),
   touchGamepad: document.getElementById('touchGamepad'), touchStick: document.getElementById('touchStick'), touchKnob: document.getElementById('touchKnob'), touchOpacity: document.getElementById('touchOpacity'),
